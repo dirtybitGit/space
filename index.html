@@ -67,8 +67,6 @@
 
         // --- Player Ship ---
         const player = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
             radius: 10, // Smaller size
             angle: -Math.PI / 2, // Pointing up
             speed: 3,
@@ -228,7 +226,7 @@
         }
 
         let bullets = [];
-        const bulletCount = 200;
+        let bulletCount = 200;
 
         function Bullet(x, y, dx, dy, radius, color) {
             this.x = x; this.y = y; this.dx = dx; this.dy = dy; this.radius = radius; this.color = color;
@@ -252,7 +250,7 @@
 
         Bullet.prototype.reset = function() {
             const side = Math.floor(random(0, 4));
-            const speed = random(0.5, 2);
+            const speed = random(0.5 * bulletSpeedMultiplier, 2 * bulletSpeedMultiplier);
             switch (side) {
                 case 0: this.x = random(0, canvas.width); this.y = -this.radius; this.dx = random(-speed, speed); this.dy = speed; break;
                 case 1: this.x = canvas.width + this.radius; this.y = random(0, canvas.height); this.dx = -speed; this.dy = random(-speed, speed); break;
@@ -324,6 +322,8 @@
         }
 
         function init() {
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
             bullets = [];
             for (let i = 0; i < bulletCount; i++) {
                 const bullet = new Bullet(0, 0, 0, 0, random(1, 2.5), 'white');
@@ -399,7 +399,22 @@
             const seconds = Math.floor(elapsedTime / 1000);
             const milliseconds = elapsedTime % 1000;
             stopwatchDisplay.textContent = `${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+
+            // 15초마다 총알 개수 증가
+            if (elapsedTime - lastBulletIncreaseTime >= 15000) {
+                bulletCount += 10; // 15초마다 10개씩 증가 (원하는 값으로 조절)
+                for (let i = 0; i < 10; i++) { // 증가시킨 개수만큼 새로운 총알 추가
+                    const bullet = new Bullet(0, 0, 0, 0, random(1, 2.5), 'white');
+                    bullet.reset();
+                    bullets.push(bullet);
+                }
+                bulletSpeedMultiplier += 0.1; // 총알 속도 배율 증가 (원하는 값으로 조절)
+                lastBulletIncreaseTime = elapsedTime;
+            }
         }
+
+        let lastBulletIncreaseTime = 0;
+        let bulletSpeedMultiplier = 1; // 총알 속도 배율 변수 추가
 
         init();
         animate();
