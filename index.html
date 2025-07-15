@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Space Attack</title>
+    <link rel="stylesheet" href="space.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+    <canvas id="spaceCanvas"></canvas>
+    <div id="stopwatch">00:00.000</div>
+
+    <div id="gameOverContainer" style="display: none;">
+        <div id="nameInputBox">
+            <h3>Enter Your Name</h3>
+            <input type="text" id="playerNameInput" maxlength="10">
+            <button id="submitScoreButton">Submit</button>
+        </div>
+        <div id="gameOverBox" style="display: none;">
+            <p id="congratulationsMessage"></p>
+            <h3 id="gameOverText">Game Over</h3>
+            <p id="finalTimeDisplay"></p>
+            <div id="leaderboardDisplay"></div>
+            <button id="restartButton">Restart</button>
+        </div>
+    </div>
+
+    
+
+    
+    <script>
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBKwWpdakqjXSssSXql9f33bQnItLUnDmI",
+            authDomain: "space-invaders-leaderboa-4a38b.firebaseapp.com",
+            projectId: "space-invaders-leaderboa-4a38b",
+            storageBucket: "space-invaders-leaderboa-4a38b.firebasestorage.app",
+            messagingSenderId: "345123627492",
+            appId: "1:345123627492:web:385641d51817c0dae827f1"
+        };        
+
+        // Initialize Firebase
+        let db;
+        if (firebaseConfig.apiKey) {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+        }
+
+        const canvas = document.getElementById('spaceCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverContainer = document.getElementById('gameOverContainer');
+        const nameInputBox = document.getElementById('nameInputBox');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const submitScoreButton = document.getElementById('submitScoreButton');
+        const gameOverBox = document.getElementById('gameOverBox');
+        const restartButton = document.getElementById('restartButton');
+        const stopwatchDisplay = document.getElementById('stopwatch');
+        const finalTimeDisplay = document.getElementById('finalTimeDisplay');
+        const leaderboardDisplay = document.getElementById('leaderboardDisplay');
+
+        // Helper function for random numbers
+        function random(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // --- Player Ship ---
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 10, // Smaller size
+            angle: -Math.PI / 2, // Pointing up
+            speed: 3,
+            velX: 0, // Velocity X
+            velY: 0  // Velocity Y
+        };
+
+        let gameOver = false; // Game state flag
+        let scoreSubmitted = false; // Flag to prevent multiple submissions
+        let animationFrameId; // To store the requestAnimationFrame ID
+        let startTime; // To store the game start time
+        let finalTime = 0; // To store the final elapsed time
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Restart Game Function
+        function restartGame() {
+            gameOver = false;
+            scoreSubmitted = false;
+            gameOverContainer.style.display = 'none';
+            gameOverBox.style.display = 'none';
+            nameInputBox.style.display = 'none';
+            leaderboardDisplay.innerHTML = '';
+
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            player.velX = 0;
+            player.velY = 0;
+            init();
+            startTime = Date.now();
+            animate();
+        }
+
+        restartButton.addEventListener('click', restartGame);
+        submitScoreButton.addEventListener('click', () => {
+            const playerName = playerNameInput.value.trim();
+            if (playerName) {
+                submitScore(playerName, finalTime);
+                nameInputBox.style.display = 'none';
+                gameOverBox.style.display = 'block';
+            } else {
+                playerNameInput.focus();
+                playerNameInput.style.borderColor = 'red';
+            }
+        });
+
+        playerNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent the event from bubbling up
+                submitScoreButton.click();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && gameOver) {
+                restartGame();
+            }
+            if (e.key in keys) keys[e.key] = true;
+        });
+
+        function drawPlayer() {
+            const r = player.radius;
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(player.angle);
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -r);
+            ctx.lineTo(r * 0.8, r * 0.7);
+            ctx.lineTo(r * 0.5, r);
+            ctx.lineTo(-r * 0.5, r);
+            ctx.lineTo(-r * 0.8, r * 0.7);
+            ctx.closePath();
+            ctx.fillStyle = '#ddd';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(0, -r * 0.4);
+            ctx.lineTo(r * 0.2, r * 0.1);
+            ctx.lineTo(-r * 0.2, r * 0.1);
+            ctx.closePath();
+            ctx.fillStyle = '#00bfff';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function updatePlayer() {
+            player.x += player.velX;
+            player.y += player.velY;
+
+            if (player.velX !== 0 || player.velY !== 0) {
+                player.angle = Math.atan2(player.velY, player.velX) + Math.PI / 2;
+            }
+
+            if (player.x < -player.radius) player.x = canvas.width + player.radius;
+            if (player.x > canvas.width + player.radius) player.x = -player.radius;
+            if (player.y < -player.radius) player.y = canvas.height + player.radius;
+            if (player.y > canvas.height + player.radius) player.y = -player.radius;
+        }
+
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+
+        function handleKeys() {
+            player.velY = 0;
+            player.velX = 0;
+            if (keys.ArrowUp) player.velY = -player.speed;
+            if (keys.ArrowDown) player.velY = player.speed;
+            if (keys.ArrowLeft) player.velX = -player.speed;
+            if (keys.ArrowRight) player.velX = player.speed;
+        }
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key in keys) keys[e.key] = false;
+        });
+
+        let touchTarget = null;
+        canvas.addEventListener('touchstart', (e) => {
+            touchTarget = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (touchTarget) {
+                touchTarget = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => {
+            touchTarget = null;
+            player.velX = 0;
+            player.velY = 0;
+        });
+
+        function handleTouch() {
+            if (!touchTarget) return;
+
+            const dx = touchTarget.x - player.x;
+            const dy = touchTarget.y - player.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > player.radius) {
+                player.velX = (dx / distance) * player.speed;
+                player.velY = (dy / distance) * player.speed;
+            } else {
+                player.velX = 0;
+                player.velY = 0;
+            }
+        }
+
+        let bullets = [];
+        const bulletCount = 200;
+
+        function Bullet(x, y, dx, dy, radius, color) {
+            this.x = x; this.y = y; this.dx = dx; this.dy = dy; this.radius = radius; this.color = color;
+        }
+
+        Bullet.prototype.draw = function() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+        };
+
+        Bullet.prototype.update = function() {
+            this.x += this.dx;
+            this.y += this.dy;
+            if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                this.reset();
+            }
+            this.draw();
+        };
+
+        Bullet.prototype.reset = function() {
+            const side = Math.floor(random(0, 4));
+            const speed = random(0.5, 2);
+            switch (side) {
+                case 0: this.x = random(0, canvas.width); this.y = -this.radius; this.dx = random(-speed, speed); this.dy = speed; break;
+                case 1: this.x = canvas.width + this.radius; this.y = random(0, canvas.height); this.dx = -speed; this.dy = random(-speed, speed); break;
+                case 2: this.x = random(0, canvas.width); this.y = canvas.height + this.radius; this.dx = random(-speed, speed); this.dy = -speed; break;
+                case 3: this.x = -this.radius; this.y = random(0, canvas.height); this.dx = speed; this.dy = random(-speed, speed); break;
+            }
+        };
+
+        async function submitScore(name, score) {
+            if (!firebase.apps.length) return;
+            try {
+                await db.collection('scores').add({ name: name, score: score, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                console.log('Score submitted!');
+                displayLeaderboard(name, score);
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                leaderboardDisplay.innerHTML = "Failed to submit score.";
+            }
+        }
+
+        async function displayLeaderboard(submittedPlayerName = null, submittedPlayerScore = null) {
+            if (!firebase.apps.length) {
+                leaderboardDisplay.innerHTML = "Firebase not configured.";
+                return;
+            }
+            leaderboardDisplay.innerHTML = 'Loading...';
+            try {
+                const snapshot = await db.collection('scores').orderBy('score', 'desc').limit(5).get();
+                let leaderboardHTML = '<table><tr><th>Rank</th><th>Name</th><th>Time</th></tr>';
+                let playerRank = -1;
+
+                // Helper function to get ordinal suffix
+                function getOrdinalSuffix(n) {
+                    const s = ["th", "st", "nd", "rd"];
+                    const v = n % 100;
+                    return (s[v - 20] || s[v] || s[0]);
+                }
+
+                if (snapshot.empty) {
+                    leaderboardHTML = "<p>No scores yet. Be the first!</p>";
+                } else {
+                    let rank = 1;
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const time = `${String(Math.floor(data.score / 1000)).padStart(2, '0')}.${String(data.score % 1000).padStart(3, '0')}`;
+                        let rowClass = '';
+                        if (submittedPlayerName && submittedPlayerScore && data.name === submittedPlayerName && data.score === submittedPlayerScore) {
+                            rowClass = 'player-score';
+                            playerRank = rank;
+                        }
+                        leaderboardHTML += `<tr class="${rowClass}"><td>${rank}.</td><td>${data.name}</td><td>${time}</td></tr>`;
+                        rank++;
+                    });
+                    leaderboardHTML += '</table>';
+                }
+                leaderboardDisplay.innerHTML = leaderboardHTML;
+
+                const congratulationsMessage = document.getElementById('congratulationsMessage');
+                if (playerRank !== -1) {
+                    congratulationsMessage.textContent = `Congratulations! You ranked ${playerRank}${getOrdinalSuffix(playerRank)}!`;
+                } else {
+                    congratulationsMessage.textContent = '';
+                }
+
+            } catch (error) {
+                console.error("Error getting leaderboard: ", error);
+                leaderboardDisplay.innerHTML = "Could not load leaderboard.";
+            }
+        }
+
+        function init() {
+            bullets = [];
+            for (let i = 0; i < bulletCount; i++) {
+                const bullet = new Bullet(0, 0, 0, 0, random(1, 2.5), 'white');
+                bullet.reset();
+                bullets.push(bullet);
+            }
+            startTime = Date.now();
+        }
+
+        async function handleGameOver() {
+            if (!firebase.apps.length) {
+                gameOverContainer.style.display = 'block';
+                gameOverBox.style.display = 'block';
+                finalTimeDisplay.textContent = `You Survived For: ${String(Math.floor(finalTime / 1000)).padStart(2, '0')}.${String(finalTime % 1000).padStart(3, '0')} seconds`;
+                leaderboardDisplay.innerHTML = "Firebase not configured.";
+                return;
+            }
+
+            const scoresRef = db.collection('scores');
+            const snapshot = await scoresRef.orderBy('score', 'desc').limit(5).get();
+            
+            let shouldAskForName = false;
+            if (snapshot.docs.length < 5) {
+                shouldAskForName = true;
+            } else {
+                const lowestScore = snapshot.docs[snapshot.docs.length - 1].data().score;
+                if (finalTime > lowestScore) {
+                    shouldAskForName = true;
+                }
+            }
+
+            gameOverContainer.style.display = 'block';
+            if (shouldAskForName) {
+                nameInputBox.style.display = 'block';
+                playerNameInput.focus();
+            } else {
+                gameOverBox.style.display = 'block';
+            }
+            const finalSeconds = Math.floor(finalTime / 1000);
+            const finalMilliseconds = finalTime % 1000;
+            finalTimeDisplay.textContent = `You Survived For: ${String(finalSeconds).padStart(2, '0')}.${String(finalMilliseconds).padStart(3, '0')} seconds`;
+            displayLeaderboard();
+        }
+
+        function animate() {
+            if (gameOver) {
+                if (!scoreSubmitted) {
+                    scoreSubmitted = true;
+                    handleGameOver();
+                }
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            handleKeys();
+            handleTouch();
+            updatePlayer();
+            drawPlayer();
+
+            for (const bullet of bullets) {
+                bullet.update();
+                const dist = Math.sqrt(Math.pow(player.x - bullet.x, 2) + Math.pow(player.y - bullet.y, 2));
+                if (dist < player.radius + bullet.radius) {
+                    gameOver = true;
+                    finalTime = Date.now() - startTime;
+                }
+            }
+
+            const elapsedTime = Date.now() - startTime;
+            const seconds = Math.floor(elapsedTime / 1000);
+            const milliseconds = elapsedTime % 1000;
+            stopwatchDisplay.textContent = `${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
+</body>
+</html>

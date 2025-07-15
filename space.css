@@ -1,0 +1,195 @@
+@font-face {
+    font-family: 'DungGeunMo';
+    src: url('NeoDunggeunmoPro-Regular.ttf');
+}
+
+#font-test {
+    font-family: 'DungGeunMo', cursive;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body {
+    background-color: #000;
+    font-family: 'DungGeunMo', cursive;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+button, input, h3, div {
+    font-family: 'DungGeunMo', cursive;
+}
+canvas {
+    display: block;
+}
+
+
+#stopwatch {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #0f0;
+    font-size: 1.5em;
+    z-index: 50;
+    text-shadow: 1px 1px #000;
+}
+
+        @keyframes flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+
+        #gameOverContainer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+        }
+
+        #gameOverBox {
+            position: relative;
+            background-color: #111;
+            padding: 40px;
+            border: 4px solid #555;
+            text-align: center;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            animation: none; /* Remove flicker animation for a softer look */
+        }
+
+        #nameInputBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #111;
+            padding: 40px;
+            border: 4px solid #555;
+            text-align: center;
+            z-index: 101;
+            color: #fff;
+            image-rendering: pixelated;
+            width: 450px; /* Increased width */
+        }
+
+        #nameInputBox h3 {
+            font-size: 2.5em;
+            color: #ffc800; /* Arcade yellow */
+            text-shadow: 3px 3px #000;
+            margin-bottom: 30px;
+        }
+
+        #playerNameInput {
+            background-color: #222;
+            border: 2px solid #888;
+            color: #fff;
+            padding: 15px;
+            font-family: 'DungGeunMo', cursive;
+            font-size: 1.5em;
+            text-align: center;
+            width: 90%;
+            margin-bottom: 30px;
+        }
+
+        #playerNameInput:focus {
+            outline: none;
+            background-color: #333;
+            border-color: #ffc800;
+        }
+
+        #submitScoreButton {
+            background-color: #007bff; /* Blue button */
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-size: 1.2em;
+            text-shadow: 2px 2px #000;
+            transition: background-color 0.2s;
+        }
+
+        #submitScoreButton:hover {
+            background-color: #0056b3;
+        }
+
+        #leaderboardDisplay {
+            margin-top: 20px;
+            text-align: center;
+            color: #fff;
+        }
+
+        #leaderboardDisplay table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 auto;
+        }
+
+        #leaderboardDisplay th, #leaderboardDisplay td {
+            padding: 8px;
+            border-bottom: 1px solid #444;
+            text-align: center;
+        }
+
+        #leaderboardDisplay th {
+            color: #ffc800;
+        }
+
+        .player-score {
+            color: #00ff00; /* Green for player's score */
+            font-weight: bold;
+        }
+
+        #congratulationsMessage {
+            font-size: 1.5em;
+            color: #00ff00;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px #000;
+        }
+
+        #gameOverText {
+            font-size: 2.5em;
+            color: #ffc800; /* Arcade yellow */
+            text-shadow: 3px 3px #000;
+            margin-bottom: 30px;
+        }
+
+        #finalTimeDisplay {
+            font-size: 1.5em;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+
+        #restartButton {
+            background-color: #007bff; /* Blue button */
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-size: 1.2em;
+            text-shadow: 2px 2px #000;
+            transition: background-color 0.2s;
+            margin-top: 30px;
+        }
+
+        #restartButton:hover {
+            background-color: #0056b3;
+        }
+
+        @keyframes slow-flicker {
+            0% { opacity: 1; }
+            49% { opacity: 1; }
+            50% { opacity: 0.9; }
+            99% { opacity: 0.9; }
+            100% { opacity: 1; }
+        }
