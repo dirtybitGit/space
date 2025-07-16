@@ -65,6 +65,8 @@
             return Math.random() * (max - min) + min;
         }
 
+        const INVULNERABILITY_DURATION = 2000; // 2초 무적 시간 (밀리초)
+
         // --- Player Ship ---
         const player = {
             radius: 10, // Smaller size
@@ -73,6 +75,7 @@
             velX: 0, // Velocity X
             velY: 0  // Velocity Y
         };
+        player.invulnerableTimer = 0; // Initialize invulnerability timer
 
         let gameOver = false; // Game state flag
         let scoreSubmitted = false; // Flag to prevent multiple submissions
@@ -164,10 +167,30 @@
                 player.angle = Math.atan2(player.velY, player.velX) + Math.PI / 2;
             }
 
-            if (player.x < -player.radius) player.x = canvas.width + player.radius;
-            if (player.x > canvas.width + player.radius) player.x = -player.radius;
-            if (player.y < -player.radius) player.y = canvas.height + player.radius;
-            if (player.y > canvas.height + player.radius) player.y = -player.radius;
+            let warped = false; // 워프 발생 여부를 추적하는 플래그
+
+            // 화면 밖으로 나가면 반대편 화면 안쪽으로 나타나게 하는 로직
+            // 플레이어의 가장자리가 화면 경계에 닿으면 워프
+            if (player.x < player.radius) { // 왼쪽 경계
+                player.x = canvas.width - player.radius; // 오른쪽 안쪽으로 나타남
+                warped = true;
+            } else if (player.x > canvas.width - player.radius) { // 오른쪽 경계
+                player.x = player.radius; // 왼쪽 안쪽으로 나타남
+                warped = true;
+            }
+
+            if (player.y < player.radius) { // 위쪽 경계
+                player.y = canvas.height - player.radius; // 아래쪽 안쪽으로 나타남
+                warped = true;
+            } else if (player.y > canvas.height - player.radius) { // 아래쪽 경계
+                player.y = player.radius; // 위쪽 안쪽으로 나타남
+                warped = true;
+            }
+
+            // 워프가 발생했을 때만 무적 타이머 설정
+            if (warped) {
+                player.invulnerableTimer = Date.now() + INVULNERABILITY_DURATION;
+            }
         }
 
         const keys = {
@@ -263,7 +286,6 @@
             if (!firebase.apps.length) return;
             try {
                 await db.collection('scores').add({ name: name, score: score, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-                console.log('Score submitted!');
                 displayLeaderboard(name, score);
             } catch (error) {
                 console.error("Error adding document: ", error);
@@ -324,6 +346,7 @@
         function init() {
             player.x = canvas.width / 2;
             player.y = canvas.height / 2;
+            player.invulnerableTimer = 0; // 무적 타이머 초기화
             bullets = [];
             for (let i = 0; i < bulletCount; i++) {
                 const bullet = new Bullet(0, 0, 0, 0, random(1, 2.5), 'white');
@@ -360,6 +383,7 @@
                 nameInputBox.style.display = 'block';
                 playerNameInput.focus();
             } else {
+                nameInputBox.style.display = 'none'; // <-- 이 줄을 추가합니다.
                 gameOverBox.style.display = 'block';
             }
             const finalSeconds = Math.floor(finalTime / 1000);
@@ -390,8 +414,11 @@
                 bullet.update();
                 const dist = Math.sqrt(Math.pow(player.x - bullet.x, 2) + Math.pow(player.y - bullet.y, 2));
                 if (dist < player.radius + bullet.radius) {
-                    gameOver = true;
-                    finalTime = Date.now() - startTime;
+                    // 무적 시간이 아니라면 게임 오버 처리
+                    if (Date.now() > player.invulnerableTimer) {
+                        gameOver = true;
+                        finalTime = Date.now() - startTime;
+                    }
                 }
             }
 
